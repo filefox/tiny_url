@@ -11,5 +11,5 @@ docker build -t tinyurl:latest .
 修改.env中SHORT_URL_BASE为短链接主域名
 
 ```
-docker run -p 8000:8000 --env-file ./.env --restart always --name tinyurl tinyurl:latest
+docker run -d -p 8000:8000 --env-file ./.env --restart always --name tinyurl tinyurl:latest
 ```
