@@ -89,8 +89,8 @@ func shortenHandler(w http.ResponseWriter, r *http.Request) {
 
         shortID := generateShortLink()
 
-        username := shortID              // 用户名使用 4 位 shortID
-        password := generateRandomString(2) // 密码长度为 2
+        username := shortID
+        password := generateRandomString(2)
 
         dbMutex.Lock()
         err = db.Update(func(tx *bolt.Tx) error {
@@ -174,14 +174,20 @@ func updateHandler(w http.ResponseWriter, r *http.Request) {
                 return
         }
 
-        newLongURL := r.FormValue("longUrl")
-        if newLongURL == "" {
+        longURL := r.FormValue("longUrl")
+        if longURL == "" {
                 render.JSON(w, r, map[string]string{"error": "Missing long_url parameter"})
                 return
         }
 
+        decodedURL, err := base64.StdEncoding.DecodeString(longURL)
+        if err != nil || len(decodedURL) > maxLongURLLength {
+                render.JSON(w, r, map[string]string{"error": "Invalid or too long URL"})
+                return
+        }
+
         dbMutex.Lock()
-        err := db.Update(func(tx *bolt.Tx) error {
+        err = db.Update(func(tx *bolt.Tx) error {
                 b := tx.Bucket([]byte("urls"))
                 if b == nil {
                         return fmt.Errorf("Bucket not found")
@@ -194,7 +200,7 @@ func updateHandler(w http.ResponseWriter, r *http.Request) {
                                 return err
                         }
                         if tempUserInfo.Username == username && tempUserInfo.Password == password {
-                                tempUserInfo.LongURL = newLongURL
+                                tempUserInfo.LongURL = string(decodedURL)
                                 updatedUserInfoBytes, err := json.Marshal(tempUserInfo)
                                 if err != nil {
                                         return err
@@ -226,7 +232,7 @@ func generateRandomString(bits int) string {
 }
 
 func generateShortLink() string {
-        return generateRandomString(4) // 生成 4 位 shortID
+        return generateRandomString(4)
 }
 
 func getEnv(key, defaultValue string) string {
